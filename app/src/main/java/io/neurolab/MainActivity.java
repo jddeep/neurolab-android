@@ -14,11 +14,19 @@ import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
+import android.view.animation.TranslateAnimation;
+import android.widget.ImageView;
 import io.neurolab.settings.FeedbackSettings;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
+
+    private ImageView rocketimage;
+    private int lastPos = 0;
+    private int newPos = -300;
+    private boolean moving;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -27,6 +35,7 @@ public class MainActivity extends AppCompatActivity
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
+        rocketimage = findViewById(R.id.rocketimage);
         FloatingActionButton fab = findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -44,6 +53,38 @@ public class MainActivity extends AppCompatActivity
 
         NavigationView navigationView = findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
+    }
+
+    public void moveRocket(View view){
+        if(!moving){
+            float PivotX = rocketimage.getPivotX();
+            float PivotY = rocketimage.getPivotY();
+
+            Animation launch = new TranslateAnimation(0,0, lastPos, newPos);
+            launch.setDuration(1000);
+            launch.setFillAfter(true);
+            launch.setAnimationListener(new Animation.AnimationListener() {
+                @Override
+                public void onAnimationStart(Animation animation) {
+                    moving = true;
+                }
+
+                @Override
+                public void onAnimationEnd(Animation animation) {
+                   moving = false;
+                }
+
+                @Override
+                public void onAnimationRepeat(Animation animation) {
+
+                }
+            });
+            int c = lastPos;
+            lastPos = newPos;
+            newPos = c;
+
+            rocketimage.startAnimation(launch);
+        }
     }
 
     @Override
