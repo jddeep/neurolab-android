@@ -6,6 +6,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.CardView;
 
 import io.neurolab.R;
+import io.neurolab.main.NeuroLab;
 
 public class MeditationHome extends AppCompatActivity {
 
@@ -16,6 +17,7 @@ public class MeditationHome extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_meditation_home);
         setTitle(R.string.meditation);
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         CardView happinessView = findViewById(R.id.happy_card);
         CardView depressionView = findViewById(R.id.depression_card);
@@ -30,6 +32,19 @@ public class MeditationHome extends AppCompatActivity {
         setMeditationCategoryIntent(travelView);
         setMeditationCategoryIntent(shBreakView);
         setMeditationCategoryIntent(lgBreakView);
+    }
+
+    @Override
+    public boolean onSupportNavigateUp(){
+        onBackPressed();
+        return true;
+    }
+
+    @Override
+    public void onBackPressed() {
+        super.onBackPressed();
+        startActivity(new Intent(this, NeuroLab.class));
+        finish();
     }
 
     private void setMeditationCategoryIntent(CardView view) {

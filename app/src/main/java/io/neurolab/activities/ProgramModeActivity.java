@@ -41,6 +41,7 @@ public class ProgramModeActivity extends AppCompatActivity {
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.activity_program_mode);
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         Intent intent = getIntent();
         Bundle bundle = intent.getExtras();
@@ -71,6 +72,8 @@ public class ProgramModeActivity extends AppCompatActivity {
             case RELAX_PROGRAM_MODE:
                 setTitle(R.string.relax);
                 fragment = new RelaxVisualFragment();
+                if (bundle.getString(RelaxVisualFragment.RELAX_PROGRAM_FLAG) != null)
+                    fragment.setArguments(bundle);
                 moveToFragment(fragment);
                 break;
             case MEMORY_GRAPH_MODE:
@@ -91,10 +94,18 @@ public class ProgramModeActivity extends AppCompatActivity {
     }
 
     @Override
+    public boolean onSupportNavigateUp(){
+        onBackPressed();
+        return true;
+    }
+
+    @Override
     public void onBackPressed() {
         super.onBackPressed();
         if (mode == FOCUS_PROGRAM_MODE)
             startActivity(new Intent(this, FocusParentActivity.class));
+        else if (mode == RELAX_PROGRAM_MODE)
+            startActivity(new Intent(this, RelaxParentActivity.class));
         else
             startActivity(new Intent(this, NeuroLab.class));
         finish();

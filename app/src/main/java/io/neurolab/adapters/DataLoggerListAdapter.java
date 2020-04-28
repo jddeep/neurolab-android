@@ -8,6 +8,8 @@ import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.CardView;
 import android.support.v7.widget.RecyclerView;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -67,6 +69,7 @@ public class DataLoggerListAdapter extends RecyclerView.Adapter<DataLoggerListAd
             params.rightMargin = context.getResources().getDimensionPixelSize(R.dimen.layout_margin_large);
             enterNameView.setLayoutParams(params);
             container.addView(enterNameView);
+            enterNameView.setText(files.get(i).getName());
             AlertDialog alertDialog = new AlertDialog.Builder(context)
                     .setTitle("Rename the file")
                     .setView(container)
@@ -79,6 +82,41 @@ public class DataLoggerListAdapter extends RecyclerView.Adapter<DataLoggerListAd
                     })
                     .setNegativeButton(R.string.cancel, (dialog, which) -> {
                     }).create();
+            alertDialog.show();
+            enterNameView.addTextChangedListener(new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                    // No need to be implemented
+                }
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                    if (enterNameView.getText().toString().length() > 0) {
+                        alertDialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
+                    }
+                }
+
+                @Override
+                public void afterTextChanged(Editable s) {
+                    if (enterNameView.getText().toString().length() <= 0) {
+                        alertDialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+                    }
+                }
+            });
+        });
+        viewHolder.deleteFileView.setOnClickListener(v -> {
+            FrameLayout container = new FrameLayout(context);
+            AlertDialog alertDialog = new AlertDialog.Builder(context)
+                    .setTitle("Delete file " + files.get(i).getName())
+                    .setView(container).
+                            setPositiveButton(R.string.ok_button, ((dialog, which) -> {
+                                FilePathUtil.deleteFile(files.get(i));
+                                files.remove(i);
+                                notifyItemRemoved(i);
+                                notifyItemRangeChanged(i, 1);
+                            }))
+                    .setNegativeButton(R.string.cancel, ((dialog, which) -> {
+                    })).create();
             alertDialog.show();
         });
         viewHolder.focusPlayView.setOnClickListener(v -> {
@@ -145,6 +183,7 @@ public class DataLoggerListAdapter extends RecyclerView.Adapter<DataLoggerListAd
         private ImageView renameView;
         private ImageView genPlayView;
         private CardView loggedCardView;
+        private ImageView deleteFileView;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -154,6 +193,7 @@ public class DataLoggerListAdapter extends RecyclerView.Adapter<DataLoggerListAd
             renameView = itemView.findViewById(R.id.rename_file_btn);
             genPlayView = itemView.findViewById(R.id.gen_play_view);
             loggedCardView = itemView.findViewById(R.id.parent_logged_card);
+            deleteFileView = itemView.findViewById(R.id.delete_file_btn);
         }
     }
 }

@@ -16,13 +16,16 @@
     <application
         android:allowBackup="true"
         android:hardwareAccelerated="true"
-        android:icon="@drawable/ic_neurolab_app"
+        android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:largeHeap="true"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         tools:ignore="AllowBackup">
+        <activity android:name=".activities.ShareDataActivity"
+            android:label="Share"/>
+        <activity android:name=".activities.RelaxParentActivity" />
         <activity android:name=".activities.PinLayoutActivity" />
         <activity android:name=".activities.MeditationListActivity" />
         <activity android:name=".activities.MeditationHome" />
@@ -43,6 +46,7 @@
         <activity
             android:name=".main.NeuroLab"
             android:label="@string/app_name"
+            android:launchMode="singleTop"
             android:theme="@style/AppTheme.Launcher">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -58,13 +62,13 @@
         </activity>
         <activity
             android:name=".activities.SettingsActivity"
-            android:parentActivityName=".main.NeuroLab" />
+            android:parentActivityName=".main.NeuroLab"
+            android:configChanges="orientation|keyboardHidden|screenSize"/>
         <activity
             android:name=".activities.OnBoardingActivity"
             android:theme="@style/AppTheme.NoActionBar" />
         <activity
             android:name=".activities.MeditationActivity"
-            android:configChanges="orientation|screenSize"
             android:label="@string/meditation_activity_label" />
         <activity android:name=".activities.MemoryGraphParent" />
         <activity
@@ -72,6 +76,16 @@
             android:parentActivityName=".main.NeuroLab" />
         <activity android:name=".activities.DataLoggerActivity" />
         <activity android:name=".activities.DeviceInstructionsActivity" />
+
+        <provider
+            android:name="android.support.v4.content.FileProvider"
+            android:authorities="io.neurolab.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/filepaths" />
+        </provider>
 
         <meta-data
             android:name="preloaded_fonts"

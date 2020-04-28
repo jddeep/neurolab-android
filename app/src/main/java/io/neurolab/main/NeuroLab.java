@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.IntentSender;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.hardware.usb.UsbManager;
@@ -28,6 +29,11 @@ import android.widget.Toast;
 
 import com.felhr.usbserial.UsbSerialDevice;
 import com.felhr.usbserial.UsbSerialInterface;
+import com.google.android.play.core.appupdate.AppUpdateInfo;
+import com.google.android.play.core.appupdate.AppUpdateManager;
+import com.google.android.play.core.appupdate.AppUpdateManagerFactory;
+import com.google.android.play.core.install.model.UpdateAvailability;
+import com.google.android.play.core.tasks.Task;
 
 import java.io.UnsupportedEncodingException;
 
@@ -41,33 +47,43 @@ import io.neurolab.activities.MemoryGraphParent;
 import io.neurolab.activities.OnBoardingActivity;
 import io.neurolab.activities.PinLayoutActivity;
 import io.neurolab.activities.ProgramModeActivity;
+import io.neurolab.activities.RelaxParentActivity;
 import io.neurolab.activities.SettingsActivity;
+import io.neurolab.activities.ShareDataActivity;
 import io.neurolab.activities.TestModeActivity;
 import io.neurolab.communication.USBCommunicationHandler;
 import io.neurolab.communication.bluetooth.BluetoothTestActivity;
-import io.neurolab.fragments.RelaxVisualFragment;
 import io.neurolab.utilities.PermissionUtils;
+
+import static com.google.android.play.core.install.model.AppUpdateType.IMMEDIATE;
 
 public class NeuroLab extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, View.OnClickListener {
 
-    private static final String ACTION_USB_PERMISSION = "io.neurolab.USB_PERMISSION";
-    public static boolean developerMode = false;
     public static final String DEV_MODE_KEY = "developerMode";
-    public static UsbSerialDevice serialPort;
-    public static IntentFilter intentFilter;
-    private static UsbManager usbManager;
-    private static int baudRate = 9600;
-    private static boolean deviceConnected;
-    private static String deviceData;
-    private Menu menu;
+    private static final String ACTION_USB_PERMISSION = "io.neurolab.USB_PERMISSION";
     private static final String[] READ_WRITE_PERMISSIONS = {
             Manifest.permission.WRITE_EXTERNAL_STORAGE,
             Manifest.permission.READ_EXTERNAL_STORAGE
     };
+    private static final int MY_REQUEST_CODE = 111;
     private static final int PERMISSION_REQUEST_WRITE_EXTERNAL_STORAGE_RESULT = 1;
-    private int launcherSleepTime;
+    public static boolean developerMode = false;
+    public static UsbSerialDevice serialPort;
+    public static IntentFilter intentFilter;
     public static USBCommunicationHandler usbCommunicationHandler;
+    private static UsbManager usbManager;
+    private static int baudRate = 9600;
+    private static boolean deviceConnected;
+    private static String deviceData;
+    private static AppUpdateManager appUpdateManager;
+    private static Task<AppUpdateInfo> appUpdateInfoTask;
+    private MenuItem navMeditate;
+    private Menu menu;
+    private CardView meditationCard;
+    private int launcherSleepTime;
+    private static final int TIME_INTERVAL = 2000;
+    private long mBackPressed;
     private UsbSerialInterface.UsbReadCallback readCallback = new UsbSerialInterface.UsbReadCallback() { //Defining a Callback which triggers whenever data is read.
         @Override
         public void onReceivedData(byte[] arg0) {
@@ -143,7 +159,9 @@ public class NeuroLab extends AppCompatActivity
         intentFilter = new IntentFilter();
         // adding the possible USB intent actions.
         intentFilter.addAction(ACTION_USB_PERMISSION);
-        registerReceiver(broadcastReceiver, intentFilter);
+
+        appUpdateManager = AppUpdateManagerFactory.create(getApplicationContext());
+        appUpdateInfoTask = appUpdateManager.getAppUpdateInfo();
 
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
@@ -154,7 +172,7 @@ public class NeuroLab extends AppCompatActivity
         NavigationView navigationView = findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
         Menu menuNav = navigationView.getMenu();
-        MenuItem navMeditate = menuNav.findItem(R.id.nav_meditation);
+        navMeditate = menuNav.findItem(R.id.nav_meditation);
 
         if (!developerMode)
             navMeditate.setVisible(false);
@@ -164,7 +182,7 @@ public class NeuroLab extends AppCompatActivity
         CardView focusButton = findViewById(R.id.focus_card);
         CardView relaxButton = findViewById(R.id.relax_card);
         CardView memGraphButton = findViewById(R.id.mem_graph_card);
-        CardView meditationCard = findViewById(R.id.meditation_card);
+        meditationCard = findViewById(R.id.meditation_card);
 
         focusButton.setOnClickListener(this);
         relaxButton.setOnClickListener(this);
@@ -175,6 +193,67 @@ public class NeuroLab extends AppCompatActivity
             meditationCard.setVisibility(View.VISIBLE);
             meditationCard.setOnClickListener(this);
         }
+
+        checkForUpdates(appUpdateManager, appUpdateInfoTask);
+    }
+
+    private void checkForUpdates(AppUpdateManager appUpdateManager, Task<AppUpdateInfo> appUpdateInfoTask) {
+        appUpdateInfoTask.addOnSuccessListener(appUpdateInfo -> {
+            if (appUpdateInfo.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE && appUpdateInfo.isUpdateTypeAllowed(IMMEDIATE)) {
+                try {
+                    appUpdateManager.startUpdateFlowForResult(appUpdateInfo, IMMEDIATE, this, MY_REQUEST_CODE);
+                } catch (IntentSender.SendIntentException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == MY_REQUEST_CODE && resultCode != RESULT_OK) {
+            checkForUpdates(appUpdateManager, appUpdateInfoTask);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        registerReceiver(broadcastReceiver, intentFilter);
+        SharedPreferences sharedPreferences =
+                PreferenceManager.getDefaultSharedPreferences(this);
+        developerMode = sharedPreferences.getBoolean(DEV_MODE_KEY, false);
+        if (developerMode) {
+            meditationCard.setVisibility(View.VISIBLE);
+            meditationCard.setOnClickListener(this);
+            navMeditate.setVisible(true);
+            invalidateOptionsMenu();
+        }
+
+        if (!developerMode) {
+            meditationCard.setVisibility(View.GONE);
+            navMeditate.setVisible(false);
+            invalidateOptionsMenu();
+        }
+
+        appUpdateManager
+                .getAppUpdateInfo()
+                .addOnSuccessListener(
+                        appUpdateInfo -> {
+                            if (appUpdateInfo.updateAvailability()
+                                    == UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS) {
+                                try {
+                                    appUpdateManager.startUpdateFlowForResult(
+                                            appUpdateInfo,
+                                            IMMEDIATE,
+                                            this,
+                                            MY_REQUEST_CODE);
+                                } catch (IntentSender.SendIntentException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        });
     }
 
     private void startProgramModeActivity(String mode) {
@@ -192,8 +271,13 @@ public class NeuroLab extends AppCompatActivity
         if (drawer.isDrawerOpen(GravityCompat.START)) {
             drawer.closeDrawer(GravityCompat.START);
         } else {
-            unregisterReceiver(broadcastReceiver);
-            super.onBackPressed();
+            if (mBackPressed + TIME_INTERVAL > System.currentTimeMillis()) {
+                super.onBackPressed();
+                return;
+            } else {
+                Toast.makeText(getBaseContext(), R.string.double_tap_back, Toast.LENGTH_SHORT).show();
+            }
+            mBackPressed = System.currentTimeMillis();
         }
     }
 
@@ -245,6 +329,12 @@ public class NeuroLab extends AppCompatActivity
 
             testMode.setVisible(false);
             bluetoothMode.setVisible(false);
+        } else {
+            MenuItem testMode = this.menu.findItem(R.id.test_mode);
+            MenuItem bluetoothMode = this.menu.findItem(R.id.bluetooth_test);
+
+            testMode.setVisible(true);
+            bluetoothMode.setVisible(true);
         }
         return true;
     }
@@ -262,11 +352,13 @@ public class NeuroLab extends AppCompatActivity
         // Handle navigation view item clicks here.
         int id = item.getItemId();
 
+        item.setCheckable(false);
         if (id == R.id.nav_focus) {
             startActivity(new Intent(this, FocusParentActivity.class));
-            finish();
         } else if (id == R.id.nav_relax) {
-            startProgramModeActivity(RelaxVisualFragment.RELAX_PROGRAM_FLAG);
+            startActivity(new Intent(this, RelaxParentActivity.class));
+        } else if (id == R.id.nav_meditation) {
+            startActivity(new Intent(this, MeditationHome.class));
         } else if (id == R.id.nav_memory_graph) {
             startProgramModeActivity(MemoryGraphParent.MEMORY_GRAPH_FLAG);
         } else if (id == R.id.nav_connect_device) {
@@ -274,11 +366,10 @@ public class NeuroLab extends AppCompatActivity
             startActivity(new Intent(this, DeviceInstructionsActivity.class));
         } else if (id == R.id.nav_settings) {
             startActivity(new Intent(this, SettingsActivity.class));
-            finish();
         } else if (id == R.id.nav_about_us) {
             startActivity(new Intent(this, AboutUsActivity.class));
         } else if (id == R.id.nav_share) {
-
+            startActivity(new Intent(this, ShareDataActivity.class));
         } else if (id == R.id.nav_data_logger) {
             startActivity(new Intent(this, DataLoggerActivity.class));
         }
@@ -317,7 +408,7 @@ public class NeuroLab extends AppCompatActivity
                 startActivity(new Intent(this, FocusParentActivity.class));
                 break;
             case R.id.relax_card:
-                startProgramModeActivity(RelaxVisualFragment.RELAX_PROGRAM_FLAG);
+                startActivity(new Intent(this, RelaxParentActivity.class));
                 break;
             case R.id.mem_graph_card:
                 startProgramModeActivity(MemoryGraphParent.MEMORY_GRAPH_FLAG);
@@ -327,5 +418,12 @@ public class NeuroLab extends AppCompatActivity
                 break;
         }
     }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        unregisterReceiver(broadcastReceiver);
+    }
+
 
 }

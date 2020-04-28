@@ -2,9 +2,11 @@ package io.neurolab.fragments;
 
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.support.v14.preference.SwitchPreference;
 import android.support.v7.preference.CheckBoxPreference;
 import android.support.v7.preference.Preference;
 import android.support.v7.preference.PreferenceFragmentCompat;
+import android.widget.Toast;
 
 import io.neurolab.R;
 import io.neurolab.main.NeuroLab;
@@ -13,14 +15,14 @@ import static io.neurolab.main.NeuroLab.DEV_MODE_KEY;
 
 public class ConfigFragment extends PreferenceFragmentCompat implements SharedPreferences.OnSharedPreferenceChangeListener, Preference.OnPreferenceChangeListener {
 
-    private CheckBoxPreference developerModeCheck;
+    private SwitchPreference developerModeCheck;
     private SharedPreferences sharedPreferences;
 
     @Override
     public void onCreatePreferences(Bundle bundle, String s) {
         setPreferencesFromResource(R.xml.fragment_config_settings, s);
 
-        developerModeCheck = (CheckBoxPreference) getPreferenceScreen().findPreference(DEV_MODE_KEY);
+        developerModeCheck = (SwitchPreference) getPreferenceScreen().findPreference(DEV_MODE_KEY);
         sharedPreferences = getPreferenceScreen().getSharedPreferences();
     }
 
@@ -28,7 +30,18 @@ public class ConfigFragment extends PreferenceFragmentCompat implements SharedPr
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         developerModeCheck.setOnPreferenceChangeListener(this);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
         sharedPreferences.registerOnSharedPreferenceChangeListener(this);
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        sharedPreferences.unregisterOnSharedPreferenceChangeListener(this);
     }
 
     @Override
@@ -42,8 +55,10 @@ public class ConfigFragment extends PreferenceFragmentCompat implements SharedPr
             case DEV_MODE_KEY:
                 if (!developerModeCheck.isChecked())
                     NeuroLab.developerMode = true;
-                else
+                else {
                     NeuroLab.developerMode = false;
+                    Toast.makeText(getActivity(), R.string.dev_mode_msg, Toast.LENGTH_SHORT).show();
+                }
                 break;
             default:
                 break;
